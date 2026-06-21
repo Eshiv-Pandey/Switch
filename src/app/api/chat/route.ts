@@ -66,7 +66,8 @@ export async function POST(req: NextRequest) {
     stream = await callProvider(
       account.provider as ProviderID,
       chatMessages,
-      account.apiKey
+      account.apiKey,
+      account.modelId
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : "AI provider error";

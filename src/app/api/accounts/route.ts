@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { aiAccounts } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { generateId } from "@/lib/utils";
+import { DEFAULT_OPENROUTER_MODEL, OPENROUTER_FREE_MODELS } from "@/lib/ai/openrouter-models";
 
 export async function GET() {
   const session = await auth();
@@ -14,6 +15,7 @@ export async function GET() {
       id: aiAccounts.id,
       provider: aiAccounts.provider,
       accountLabel: aiAccounts.accountLabel,
+      modelId: aiAccounts.modelId,
       isActive: aiAccounts.isActive,
       createdAt: aiAccounts.createdAt,
       // Never return the actual API key
@@ -29,15 +31,25 @@ export async function POST(req: NextRequest) {
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { provider, accountLabel, apiKey } = body;
+  const { provider, accountLabel, apiKey, modelId } = body;
 
   if (!provider || !accountLabel || !apiKey) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
-  const validProviders = ["claude", "chatgpt", "gemini", "deepseek"];
+  const validProviders = ["claude", "chatgpt", "gemini", "deepseek", "openrouter"];
   if (!validProviders.includes(provider)) {
     return NextResponse.json({ error: "Invalid provider" }, { status: 400 });
+  }
+
+  const selectedModelId =
+    provider === "openrouter" ? modelId || DEFAULT_OPENROUTER_MODEL : modelId || null;
+
+  if (
+    provider === "openrouter" &&
+    !OPENROUTER_FREE_MODELS.some((model) => model.id === selectedModelId)
+  ) {
+    return NextResponse.json({ error: "Invalid OpenRouter model" }, { status: 400 });
   }
 
   const id = generateId();
@@ -47,6 +59,7 @@ export async function POST(req: NextRequest) {
     provider,
     accountLabel,
     apiKey,
+    modelId: selectedModelId,
     isActive: true,
   });
 

@@ -246,7 +246,7 @@ export function AppSidebar({
           )}
 
           <Link
-            href="/projects/new"
+            href="/projects"
             style={{ ...navItemStyle(false), color: "#52525b", fontSize: "0.75rem" }}
           >
             <Plus style={{ width: 13, height: 13, flexShrink: 0 }} />

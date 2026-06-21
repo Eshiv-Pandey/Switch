@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { users, aiAccounts, projects } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { generateId } from "@/lib/utils";
+import { DEFAULT_OPENROUTER_MODEL } from "@/lib/ai/openrouter-models";
 
 async function seedUserDefaults(userId: string) {
   const defaultOrKey = process.env.DEFAULT_OPENROUTER_KEY;
@@ -16,6 +17,7 @@ async function seedUserDefaults(userId: string) {
       provider: "openrouter",
       accountLabel: "OpenRouter (Free)",
       apiKey: defaultOrKey,
+      modelId: DEFAULT_OPENROUTER_MODEL,
       isActive: true,
     });
   }

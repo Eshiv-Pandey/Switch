@@ -29,6 +29,7 @@ export const aiAccounts = pgTable("ai_accounts", {
   }).notNull(),
   accountLabel: text("account_label").notNull(),
   apiKey: text("api_key").notNull(),
+  modelId: text("model_id"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { mode: "string" }).notNull().defaultNow(),
 });

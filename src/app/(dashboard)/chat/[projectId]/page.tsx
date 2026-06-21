@@ -112,6 +112,7 @@ export default async function ChatPage({
         id: a.id,
         provider: a.provider,
         accountLabel: a.accountLabel,
+        modelId: a.modelId,
       }))}
       activeAccountId={conversation.activeAccountId ?? accounts[0]?.id}
       memoryCount={memCount?.count ?? 0}

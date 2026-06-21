@@ -4,11 +4,13 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Trash2, Eye, EyeOff, X, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DEFAULT_OPENROUTER_MODEL, OPENROUTER_FREE_MODELS, getOpenRouterModelLabel } from "@/lib/ai/openrouter-models";
 
 interface Account {
   id: string;
   provider: string;
   accountLabel: string;
+  modelId?: string | null;
   isActive: boolean;
   createdAt: string;
 }
@@ -24,12 +26,15 @@ const PROVIDERS = [
 function AddAccountModal({ onClose, onAdded }: { onClose: () => void; onAdded: () => void }) {
   const [provider, setProvider] = useState(PROVIDERS[0].id);
   const [accountLabel, setAccountLabel] = useState("Account 1");
+  const [modelId, setModelId] = useState<string>(DEFAULT_OPENROUTER_MODEL);
   const [apiKey, setApiKey] = useState("");
   const [showKey, setShowKey] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const selectedProvider = PROVIDERS.find((p) => p.id === provider)!;
+  const isOpenRouter = provider === "openrouter";
+  const selectedModelName = getOpenRouterModelLabel(modelId);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,7 +46,7 @@ function AddAccountModal({ onClose, onAdded }: { onClose: () => void; onAdded: (
       const res = await fetch("/api/accounts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider, accountLabel, apiKey }),
+        body: JSON.stringify({ provider, accountLabel, apiKey, modelId: isOpenRouter ? modelId : undefined }),
       });
       if (!res.ok) throw new Error("Failed");
       onAdded();
@@ -99,6 +104,33 @@ function AddAccountModal({ onClose, onAdded }: { onClose: () => void; onAdded: (
               ))}
             </div>
           </div>
+
+          {isOpenRouter && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs text-zinc-500">Free OpenRouter Model</label>
+              <div className="space-y-2">
+                {OPENROUTER_FREE_MODELS.map((model) => (
+                  <button
+                    key={model.id}
+                    type="button"
+                    onClick={() => setModelId(model.id)}
+                    className={cn(
+                      "w-full rounded-xl border px-3 py-2.5 text-left transition-all",
+                      modelId === model.id
+                        ? "border-teal-400/40 bg-teal-400/10"
+                        : "border-white/6 bg-white/3 hover:border-white/12"
+                    )}
+                  >
+                    <span className="block text-sm font-medium text-white">{model.name}</span>
+                    <span className="mt-0.5 block text-xs text-zinc-500">{model.note}</span>
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-zinc-600">
+                Add the same OpenRouter key more than once with different models to switch between them without losing context. Selected: {selectedModelName}.
+              </p>
+            </div>
+          )}
 
           {/* Account label */}
           <div className="flex flex-col gap-1.5">
@@ -188,7 +220,20 @@ export default function SettingsPage() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchAccounts(); }, []);
+  useEffect(() => {
+    const loadAccounts = async () => {
+      try {
+        const res = await fetch("/api/accounts");
+        const data = await res.json();
+        setAccounts(data);
+      } catch {
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void loadAccounts();
+  }, []);
 
   const handleDelete = async (id: string) => {
     setDeleting(id);

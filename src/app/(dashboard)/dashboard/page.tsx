@@ -128,7 +128,7 @@ export default async function DashboardPage() {
           <div style={{ ...cardBase, background: "#111", border: "1px solid rgba(255,255,255,0.07)", padding: 22 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
               <h2 style={{ fontWeight: 700, color: "#fff", fontSize: "0.875rem" }}>Projects</h2>
-              <Link href="/projects/new" style={{ display: "flex", alignItems: "center", gap: 4, fontSize: "0.75rem", color: "#c8f400", textDecoration: "none", fontWeight: 600 }}>
+              <Link href="/projects" style={{ display: "flex", alignItems: "center", gap: 4, fontSize: "0.75rem", color: "#c8f400", textDecoration: "none", fontWeight: 600 }}>
                 <Plus style={{ width: 12, height: 12 }} />
                 New
               </Link>
@@ -137,7 +137,7 @@ export default async function DashboardPage() {
             {recentProjects.length === 0 ? (
               <div style={{ textAlign: "center", padding: "24px 0" }}>
                 <p style={{ fontSize: "0.8rem", color: "#52525b", marginBottom: 8 }}>No projects yet.</p>
-                <Link href="/projects/new" style={{ fontSize: "0.78rem", color: "#c8f400", textDecoration: "none" }}>
+                <Link href="/projects" style={{ fontSize: "0.78rem", color: "#c8f400", textDecoration: "none" }}>
                   Create your first →
                 </Link>
               </div>
@@ -236,7 +236,7 @@ export default async function DashboardPage() {
               <h2 style={{ fontWeight: 700, color: "#fff", fontSize: "0.875rem", marginBottom: 12 }}>Quick Start</h2>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {[
-                  { href: "/projects/new", icon: Plus, label: "New Project",   sub: "Create a workspace",      color: "#c8f400" },
+                  { href: "/projects", icon: Plus, label: "New Project",   sub: "Create a workspace",      color: "#c8f400" },
                   { href: "/settings",     icon: Repeat2, label: "Add AI Account", sub: "Claude, GPT, Gemini…", color: "#ff3cac" },
                   { href: "/memory",       icon: Brain, label: "View Memory",   sub: "Decisions & goals",      color: "#7b2fbe" },
                 ].map(({ href, icon: Icon, label, sub, color }) => (

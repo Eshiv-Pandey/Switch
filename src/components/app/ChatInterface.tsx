@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { getOpenRouterModelLabel } from "@/lib/ai/openrouter-models";
 
 interface Message {
   id: string;
@@ -33,6 +34,7 @@ interface Account {
   id: string;
   provider: string;
   accountLabel: string;
+  modelId?: string | null;
 }
 
 interface ChatInterfaceProps {
@@ -53,6 +55,16 @@ const PROVIDER_META: Record<string, { name: string; color: string; icon: string 
 };
 
 // ─── Message Bubble ───────────────────────────────────────────────────────────
+PROVIDER_META.openrouter = { name: "OpenRouter", color: "#14b8a6", icon: "OR" };
+
+function getAccountDisplayName(account?: Account) {
+  if (!account) return "";
+  if (account.provider === "openrouter") {
+    return `${account.accountLabel} - ${getOpenRouterModelLabel(account.modelId)}`;
+  }
+  return account.accountLabel;
+}
+
 function MessageBubble({ msg }: { msg: Message }) {
   const [copied, setCopied] = useState(false);
   const isUser = msg.role === "user";
@@ -226,7 +238,7 @@ function SwitchModal({
                           : "text-zinc-300 hover:bg-white/6 hover:text-white border border-transparent hover:border-white/8"
                       )}
                     >
-                      <span>{acct.accountLabel}</span>
+                      <span>{getAccountDisplayName(acct)}</span>
                       {acct.id === currentAccountId ? (
                         <span className="text-xs text-zinc-600 flex items-center gap-1">
                           <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
@@ -319,7 +331,7 @@ export function ChatInterface({
         role: "assistant",
         content: "",
         modelProvider: currentAccount?.provider,
-        accountLabel: currentAccount?.accountLabel,
+        accountLabel: getAccountDisplayName(currentAccount),
         createdAt: new Date().toISOString(),
       };
 
@@ -362,7 +374,7 @@ export function ChatInterface({
     const switchMsg: Message = {
       id: crypto.randomUUID(),
       role: "system",
-      content: `🔄 Switched to ${accounts.find((a) => a.id === newAccountId)?.accountLabel} · ${PROVIDER_META[accounts.find((a) => a.id === newAccountId)?.provider ?? ""]?.name}. Context has been transferred.`,
+      content: `Switched to ${getAccountDisplayName(accounts.find((a) => a.id === newAccountId))}. Context has been transferred.`,
       createdAt: new Date().toISOString(),
     };
 
@@ -412,7 +424,7 @@ export function ChatInterface({
                   style={{ background: currentMeta.color }}
                 />
                 <span className="text-zinc-500" style={{ color: currentMeta.color + "aa" }}>
-                  {currentMeta.name} · {currentAccount?.accountLabel}
+                  {currentMeta.name} - {getAccountDisplayName(currentAccount)}
                 </span>
               </p>
             )}
@@ -452,7 +464,7 @@ export function ChatInterface({
               No AI account connected
             </h3>
             <p className="text-xs text-zinc-500 max-w-xs mb-4">
-              Add an API key for Claude, ChatGPT, Gemini, or DeepSeek to start chatting.
+              Add an API key for Claude, ChatGPT, Gemini, DeepSeek, or OpenRouter to start chatting.
             </p>
             <Link
               href="/settings"
@@ -481,7 +493,7 @@ export function ChatInterface({
                 className="mt-4 px-3 py-2 rounded-xl text-xs border"
                 style={{ borderColor: currentMeta.color + "30", background: currentMeta.color + "10", color: currentMeta.color + "cc" }}
               >
-                {currentMeta.icon} {currentMeta.name} · {currentAccount?.accountLabel}
+                {currentMeta.icon} {currentMeta.name} - {getAccountDisplayName(currentAccount)}
               </div>
             )}
           </div>

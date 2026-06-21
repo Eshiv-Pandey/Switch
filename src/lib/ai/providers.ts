@@ -4,6 +4,8 @@
  * Supports Claude, ChatGPT, Gemini, DeepSeek.
  */
 
+import { DEFAULT_OPENROUTER_MODEL } from "@/lib/ai/openrouter-models";
+
 export type ProviderID = "claude" | "chatgpt" | "gemini" | "deepseek" | "openrouter";
 
 export interface ChatMessage {
@@ -23,7 +25,7 @@ const DEFAULT_MODELS: Record<ProviderID, string> = {
   chatgpt: "gpt-4o",
   gemini: "gemini-1.5-flash-latest",
   deepseek: "deepseek-chat",
-  openrouter: "openrouter/free",
+  openrouter: DEFAULT_OPENROUTER_MODEL,
 };
 
 // ─── Claude (Anthropic) ────────────────────────────────────────────────────────
@@ -297,13 +299,14 @@ async function callOpenRouter(
 export async function callProvider(
   provider: ProviderID,
   messages: ChatMessage[],
-  apiKey: string
+  apiKey: string,
+  model?: string | null
 ): Promise<ReadableStream<Uint8Array>> {
   if (!apiKey) {
     throw new Error(`No API key configured for ${provider}. Please add one in Settings → AI Accounts.`);
   }
 
-  const config: ProviderConfig = { provider, apiKey };
+  const config: ProviderConfig = { provider, apiKey, model: model ?? undefined };
 
   switch (provider) {
     case "claude":

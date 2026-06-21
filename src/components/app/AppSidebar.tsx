@@ -363,7 +363,7 @@ export function AppSidebar({
               </p>
             </div>
             <button
-              onClick={() => signOut({ callbackUrl: "/" })}
+              onClick={() => signOut({ callbackUrl: window.location.origin + "/" })}
               title="Sign out"
               style={{ color: "#52525b", background: "none", border: "none", cursor: "pointer", padding: 4, borderRadius: 6, display: "flex", flexShrink: 0 }}
               onMouseEnter={(e) => (e.currentTarget.style.color = "#a1a1aa")}

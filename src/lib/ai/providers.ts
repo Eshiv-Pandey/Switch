@@ -295,6 +295,87 @@ async function callOpenRouter(
   return streamOpenAISSE(response.body!); // OpenRouter uses OpenAI format
 }
 
+// ─── Memory Extraction (non-streaming) ───────────────────────────────────────
+const EXTRACT_SYSTEM = `You are a memory extraction assistant. Extract 0-3 important facts, decisions, goals, or preferences from the conversation exchange. Return ONLY a valid JSON array of brief strings (max 100 chars each). If nothing important, return []. Example: ["User is building a SaaS called Nexus", "Prefers dark mode", "Free tier should allow 3 projects"]. Return [] for trivial or casual exchanges.`;
+
+export async function extractFacts(
+  provider: ProviderID,
+  userMsg: string,
+  assistantMsg: string,
+  apiKey: string,
+  model?: string | null
+): Promise<string[]> {
+  const userContent = `User: ${userMsg}\n\nAssistant: ${assistantMsg.slice(0, 2000)}`;
+  try {
+    if (provider === "claude") {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model: model ?? DEFAULT_MODELS.claude,
+          max_tokens: 256,
+          system: EXTRACT_SYSTEM,
+          messages: [{ role: "user", content: userContent }],
+        }),
+      });
+      const data = await res.json();
+      const text = data.content?.[0]?.text ?? "[]";
+      return JSON.parse(text.replace(/```json?\n?/g, "").replace(/```/g, "").trim());
+    } else if (provider === "gemini") {
+      const mod = model ?? DEFAULT_MODELS.gemini;
+      const url = `https://generativelanguage.googleapis.com/v1/models/${mod}:generateContent?key=${apiKey}`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: userContent }] }],
+          systemInstruction: { parts: [{ text: EXTRACT_SYSTEM }] },
+          generationConfig: { maxOutputTokens: 256 },
+        }),
+      });
+      const data = await res.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "[]";
+      return JSON.parse(text.replace(/```json?\n?/g, "").replace(/```/g, "").trim());
+    } else {
+      // OpenAI-compatible: chatgpt, deepseek, openrouter
+      const endpoints: Record<string, string> = {
+        chatgpt: "https://api.openai.com/v1/chat/completions",
+        deepseek: "https://api.deepseek.com/v1/chat/completions",
+        openrouter: "https://openrouter.ai/api/v1/chat/completions",
+      };
+      const headers: Record<string, string> = {
+        Authorization: `Bearer ${apiKey}`,
+        "content-type": "application/json",
+      };
+      if (provider === "openrouter") {
+        headers["HTTP-Referer"] = "http://localhost:3000";
+        headers["X-Title"] = "Switch AI";
+      }
+      const res = await fetch(endpoints[provider as string], {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          model: model ?? DEFAULT_MODELS[provider],
+          max_tokens: 256,
+          messages: [
+            { role: "system", content: EXTRACT_SYSTEM },
+            { role: "user", content: userContent },
+          ],
+        }),
+      });
+      const data = await res.json();
+      const text = data.choices?.[0]?.message?.content ?? "[]";
+      return JSON.parse(text.replace(/```json?\n?/g, "").replace(/```/g, "").trim());
+    }
+  } catch {
+    return [];
+  }
+}
+
 // ─── Unified Gateway ──────────────────────────────────────────────────────────
 export async function callProvider(
   provider: ProviderID,

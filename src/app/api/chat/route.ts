@@ -1,12 +1,22 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { messages, conversations, aiAccounts } from "@/lib/db/schema";
-import { eq, asc } from "drizzle-orm";
-import { callProvider, type ProviderID } from "@/lib/ai/providers";
+import { messages, conversations, aiAccounts, memoryEntries, projects } from "@/lib/db/schema";
+import { and, desc, eq } from "drizzle-orm";
+import { callProvider, extractFacts, type ProviderID } from "@/lib/ai/providers";
+import { DEFAULT_OPENROUTER_MODEL, OPENROUTER_FREE_MODELS } from "@/lib/ai/openrouter-models";
 import { generateId } from "@/lib/utils";
-import { NextRequest } from "next/server";
+import { after, NextRequest } from "next/server";
 
 export const runtime = "nodejs";
+
+type ResponseMode = "normal" | "one_liner" | "one_para" | "one_word";
+
+const RESPONSE_MODE_PROMPTS: Record<ResponseMode, string> = {
+  normal: "",
+  one_liner: "Answer in exactly one concise line unless the user explicitly asks for a longer format.",
+  one_para: "Answer in one compact paragraph unless the user explicitly asks for a longer format.",
+  one_word: "Answer with exactly one word whenever possible.",
+};
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -19,7 +29,15 @@ export async function POST(req: NextRequest) {
     conversationId,
     content,
     accountId,
-  }: { conversationId: string; content: string; accountId: string } = body;
+    modelId,
+    responseMode = "normal",
+  }: {
+    conversationId: string;
+    content: string;
+    accountId: string;
+    modelId?: string;
+    responseMode?: ResponseMode;
+  } = body;
 
   if (!conversationId || !content || !accountId) {
     return new Response("Missing required fields", { status: 400 });
@@ -36,6 +54,26 @@ export async function POST(req: NextRequest) {
     return new Response("Account not found", { status: 404 });
   }
 
+  const [conversation] = await db
+    .select()
+    .from(conversations)
+    .where(and(eq(conversations.id, conversationId), eq(conversations.userId, session.user.id)))
+    .limit(1);
+
+  if (!conversation) {
+    return new Response("Conversation not found", { status: 404 });
+  }
+
+  const canUseRequestedModel =
+    account.provider === "openrouter" &&
+    modelId &&
+    (OPENROUTER_FREE_MODELS.some((model) => model.id === modelId) || modelId === account.modelId);
+
+  const effectiveModelId =
+    canUseRequestedModel
+      ? modelId
+      : account.modelId ?? (account.provider === "openrouter" ? DEFAULT_OPENROUTER_MODEL : undefined);
+
   // Save user message
   const userMessageId = generateId();
   await db.insert(messages).values({
@@ -45,29 +83,58 @@ export async function POST(req: NextRequest) {
     content,
     modelProvider: account.provider,
     accountId,
+    metadata: effectiveModelId ? { modelId: effectiveModelId, responseMode } : { responseMode },
   });
 
   // Load conversation history (last 30 messages)
-  const history = await db
+  const recentHistory = await db
     .select()
     .from(messages)
     .where(eq(messages.conversationId, conversationId))
-    .orderBy(asc(messages.createdAt))
+    .orderBy(desc(messages.createdAt))
     .limit(30);
+
+  const history = [...recentHistory].reverse();
+
+  const projectMemory = await db
+    .select()
+    .from(memoryEntries)
+    .where(
+      and(
+        eq(memoryEntries.projectId, conversation.projectId),
+        eq(memoryEntries.userId, session.user.id)
+      )
+    )
+    .orderBy(desc(memoryEntries.createdAt))
+    .limit(12);
 
   const chatMessages = history.map((m) => ({
     role: m.role as "user" | "assistant" | "system",
     content: m.content,
   }));
 
+  const systemMessages = [];
+  if (projectMemory.length > 0) {
+    systemMessages.push({
+      role: "system" as const,
+      content: `Project memory:\n${projectMemory
+        .map((entry) => `- ${entry.content}`)
+        .join("\n")}`,
+    });
+  }
+  const responseInstruction = RESPONSE_MODE_PROMPTS[responseMode] ?? "";
+  if (responseInstruction) {
+    systemMessages.push({ role: "system" as const, content: responseInstruction });
+  }
+
   // Call the AI provider
   let stream: ReadableStream<Uint8Array>;
   try {
     stream = await callProvider(
       account.provider as ProviderID,
-      chatMessages,
+      [...systemMessages, ...chatMessages],
       account.apiKey,
-      account.modelId
+      effectiveModelId
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : "AI provider error";
@@ -97,6 +164,7 @@ export async function POST(req: NextRequest) {
         content: fullResponse,
         modelProvider: account.provider,
         accountId,
+        metadata: effectiveModelId ? { modelId: effectiveModelId, responseMode } : { responseMode },
       });
 
       // Auto-update conversation title if it's the first exchange
@@ -107,6 +175,51 @@ export async function POST(req: NextRequest) {
           .set({ title })
           .where(eq(conversations.id, conversationId));
       }
+
+      await db
+        .update(projects)
+        .set({ updatedAt: new Date().toISOString() })
+        .where(eq(projects.id, conversation.projectId));
+
+      after(async () => {
+        const facts = await extractFacts(
+          account.provider as ProviderID,
+          content,
+          fullResponse,
+          account.apiKey,
+          effectiveModelId
+        );
+
+        if (facts.length === 0) return;
+
+        const existing = await db
+          .select({ content: memoryEntries.content })
+          .from(memoryEntries)
+          .where(
+            and(
+              eq(memoryEntries.projectId, conversation.projectId),
+              eq(memoryEntries.userId, session.user.id)
+            )
+          )
+          .limit(200);
+
+        const existingContent = new Set(existing.map((entry) => entry.content.toLowerCase()));
+        const newFacts = facts.filter((fact) => !existingContent.has(fact.toLowerCase()));
+
+        if (newFacts.length === 0) return;
+
+        await db.insert(memoryEntries).values(
+          newFacts.map((fact) => ({
+            id: generateId(),
+            projectId: conversation.projectId,
+            userId: session.user.id,
+            type: "summary" as const,
+            content: fact,
+            sourceMessageId: assistantMessageId,
+            metadata: { conversationId, modelId: effectiveModelId ?? null },
+          }))
+        );
+      });
     },
   });
 

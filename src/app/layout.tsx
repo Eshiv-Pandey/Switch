@@ -14,14 +14,19 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Switch — AI Model Switcher",
+  title: "Switch",
   description:
     "Switch between Claude, ChatGPT, Gemini, and DeepSeek without losing context. One workspace. Multiple AI brains.",
   keywords: ["AI", "Claude", "ChatGPT", "Gemini", "DeepSeek", "context", "memory"],
   openGraph: {
-    title: "Switch — AI Model Switcher",
+    title: "Switch",
     description: "Move between AI models without losing your context or memory.",
     type: "website",
+  },
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/switch-icon.png",
   },
 };
 

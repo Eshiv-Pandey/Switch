@@ -279,7 +279,7 @@ function Particles({ on, count = 18 }: { on: boolean; count?: number }) {
 }
 
 /* ---------------- Navbar ---------------- */
-function Navbar({ on, t }: { on: boolean; t: Theme }) {
+function Navbar() {
   return (
     <nav
       style={{
@@ -301,26 +301,18 @@ function Navbar({ on, t }: { on: boolean; t: Theme }) {
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <div
           style={{
-            width: 26,
-            height: 14,
-            borderRadius: 999,
-            background: `linear-gradient(90deg, ${t.accent}, #EB96FF)`,
-            position: "relative",
-            transition: "background 0.6s ease",
+            width: 32,
+            height: 32,
+            borderRadius: 9,
+            background: "rgba(255,255,255,0.08)",
+            border: "1px solid rgba(249,212,224,0.14)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            overflow: "hidden",
           }}
         >
-          <div
-            style={{
-              position: "absolute",
-              top: 2,
-              left: on ? 14 : 2,
-              width: 10,
-              height: 10,
-              borderRadius: "50%",
-              background: "#193153",
-              transition: "left 0.4s ease",
-            }}
-          />
+          <img src="/switch-icon.png" alt="" style={{ width: 25, height: 25, objectFit: "contain" }} />
         </div>
         <span
           style={{
@@ -1262,7 +1254,7 @@ export default function SwitchLanding() {
 
       {/* Content layer */}
       <div style={{ position: "relative", zIndex: 1 }}>
-        <Navbar on={on} t={t} />
+        <Navbar />
         <Hero on={on} setOn={setOn} t={t} />
         <HowItWorks on={on} t={t} />
         <Workspace t={t} />

@@ -28,16 +28,23 @@ export default function MemoryPage() {
   const [filter, setFilter] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
 
-  const fetchMemory = async () => {
-    try {
-      const res = await fetch("/api/memory");
-      const data = await res.json();
-      setEntries(data);
-    } catch {}
-    finally { setLoading(false); }
-  };
+  useEffect(() => {
+    let mounted = true;
 
-  useEffect(() => { fetchMemory(); }, []);
+    fetch("/api/memory")
+      .then((res) => res.json())
+      .then((data) => {
+        if (mounted) setEntries(data);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleDelete = async (id: string) => {
     setDeleting(id);

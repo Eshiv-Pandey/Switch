@@ -19,7 +19,12 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { getOpenRouterModelLabel } from "@/lib/ai/openrouter-models";
+import {
+  DEFAULT_OPENROUTER_MODEL,
+  OPENROUTER_FREE_MODELS,
+  getOpenRouterModelLabel,
+  getOpenRouterModelTag,
+} from "@/lib/ai/openrouter-models";
 
 interface Message {
   id: string;
@@ -36,6 +41,15 @@ interface Account {
   accountLabel: string;
   modelId?: string | null;
 }
+
+type ResponseMode = "normal" | "one_liner" | "one_para" | "one_word";
+
+const RESPONSE_MODES: { id: ResponseMode; label: string }[] = [
+  { id: "normal", label: "Default" },
+  { id: "one_liner", label: "1 liner" },
+  { id: "one_para", label: "1 para" },
+  { id: "one_word", label: "1 word" },
+];
 
 interface ChatInterfaceProps {
   conversationId: string;
@@ -93,7 +107,7 @@ function MessageBubble({ msg }: { msg: Message }) {
         </div>
       )}
 
-      <div className={cn("flex flex-col gap-1 max-w-[75%]", isUser && "items-end")}>
+      <div className={cn("chat-message-wrap flex flex-col gap-1 max-w-[75%]", isUser && "items-end")}>
         {/* Provider label */}
         {!isUser && meta && (
           <p className="text-xs text-zinc-600 pl-1" style={{ color: meta.color + "aa" }}>
@@ -273,13 +287,53 @@ export function ChatInterface({
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [currentAccountId, setCurrentAccountId] = useState(activeAccountId ?? accounts[0]?.id ?? "");
+  const [selectedModelId, setSelectedModelId] = useState(
+    () => {
+      const account = accounts.find((a) => a.id === (activeAccountId ?? accounts[0]?.id));
+      if (!account) return "";
+      return account.provider === "openrouter"
+        ? account.modelId ?? DEFAULT_OPENROUTER_MODEL
+        : account.modelId ?? "";
+    }
+  );
+  const [responseMode, setResponseMode] = useState<ResponseMode>("normal");
   const [showSwitch, setShowSwitch] = useState(false);
-  const [isSwitching, setIsSwitching] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const currentAccount = accounts.find((a) => a.id === currentAccountId);
   const currentMeta = currentAccount ? PROVIDER_META[currentAccount.provider] : null;
+  const selectedModelTag =
+    currentAccount?.provider === "openrouter"
+      ? getOpenRouterModelTag(selectedModelId || currentAccount.modelId || DEFAULT_OPENROUTER_MODEL)
+      : null;
+
+  const modelOptions = currentAccount?.provider === "openrouter"
+    ? [
+        ...OPENROUTER_FREE_MODELS.map((model) => ({
+          id: model.id,
+          label: model.name,
+          tag: model.tag,
+          tagColor: model.tagColor,
+        })),
+        ...(currentAccount.modelId &&
+        !OPENROUTER_FREE_MODELS.some((model) => model.id === currentAccount.modelId)
+          ? [{
+              id: currentAccount.modelId,
+              label: getOpenRouterModelLabel(currentAccount.modelId),
+              tag: "Added",
+              tagColor: "#a1a1aa",
+            }]
+          : []),
+      ]
+    : currentAccount
+      ? [{
+          id: currentAccount.modelId ?? "",
+          label: getAccountDisplayName(currentAccount),
+          tag: "Added",
+          tagColor: currentMeta?.color ?? "#a1a1aa",
+        }]
+      : [];
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -312,6 +366,8 @@ export function ChatInterface({
           conversationId,
           content: userMsg.content,
           accountId: currentAccountId,
+          modelId: selectedModelId || currentAccount?.modelId,
+          responseMode,
         }),
       });
 
@@ -331,7 +387,9 @@ export function ChatInterface({
         role: "assistant",
         content: "",
         modelProvider: currentAccount?.provider,
-        accountLabel: getAccountDisplayName(currentAccount),
+        accountLabel: currentAccount?.provider === "openrouter"
+          ? `${currentAccount.accountLabel} - ${getOpenRouterModelLabel(selectedModelId || currentAccount.modelId)}`
+          : getAccountDisplayName(currentAccount),
         createdAt: new Date().toISOString(),
       };
 
@@ -365,10 +423,10 @@ export function ChatInterface({
     } finally {
       setIsStreaming(false);
     }
-  }, [input, isStreaming, currentAccountId, conversationId, currentAccount]);
+  }, [input, isStreaming, currentAccountId, conversationId, currentAccount, responseMode, selectedModelId]);
 
   const handleSwitch = async (newAccountId: string) => {
-    setIsSwitching(true);
+    const nextAccount = accounts.find((a) => a.id === newAccountId);
 
     // Add a system switch message
     const switchMsg: Message = {
@@ -380,6 +438,11 @@ export function ChatInterface({
 
     setMessages((prev) => [...prev, switchMsg]);
     setCurrentAccountId(newAccountId);
+    setSelectedModelId(
+      nextAccount?.provider === "openrouter"
+        ? nextAccount.modelId ?? DEFAULT_OPENROUTER_MODEL
+        : nextAccount?.modelId ?? ""
+    );
 
     // Notify API to record the transfer
     try {
@@ -394,7 +457,6 @@ export function ChatInterface({
       });
     } catch {}
 
-    setIsSwitching(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -413,7 +475,7 @@ export function ChatInterface({
   return (
     <div className="flex flex-col h-full">
       {/* Chat header */}
-      <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/5 bg-bg-elevated/50 backdrop-blur-sm">
+      <div className="chat-header-mobile flex flex-wrap items-center justify-between px-5 py-3.5 border-b border-white/5 bg-bg-elevated/50 backdrop-blur-sm">
         <div className="flex items-center gap-3">
           <div>
             <p className="text-sm font-semibold text-white">{projectName}</p>
@@ -431,7 +493,7 @@ export function ChatInterface({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="chat-controls-mobile flex items-center gap-2">
           {/* Memory badge */}
           <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-violet-500/10 border border-violet-500/15 text-xs text-violet-400">
             <Brain className="w-3 h-3" />
@@ -524,7 +586,7 @@ export function ChatInterface({
       </div>
 
       {/* Input area */}
-      <div className="px-4 pb-4">
+      <div className="px-3 sm:px-4 pb-4">
         <div className="glass-strong rounded-2xl border border-white/10 overflow-hidden">
           <textarea
             ref={textareaRef}
@@ -541,14 +603,53 @@ export function ChatInterface({
             style={{ maxHeight: 160 }}
           />
 
-          <div className="flex items-center justify-between px-4 pb-3">
-            <div className="flex items-center gap-2">
+          <div className="composer-actions flex items-center justify-between px-4 pb-3">
+            <div className="composer-selects flex items-center gap-2 min-w-0">
               <button className="text-zinc-600 hover:text-zinc-400 transition-colors" title="Attach file">
                 <Paperclip className="w-4 h-4" />
               </button>
               {fileCount > 0 && (
                 <span className="text-xs text-zinc-700">{fileCount} files</span>
               )}
+              {modelOptions.length > 0 && (
+                <div className="flex min-w-0 items-center gap-2">
+                  <select
+                    value={selectedModelId}
+                    onChange={(e) => setSelectedModelId(e.target.value)}
+                    disabled={isStreaming}
+                    className="h-8 max-w-[230px] rounded-lg border border-white/8 bg-black/30 px-2 text-xs text-zinc-300 outline-none transition-colors hover:border-white/15 focus:border-brand-500/40 disabled:opacity-50"
+                    title="Choose model"
+                  >
+                    {modelOptions.map((model) => (
+                      <option key={model.id || model.label} value={model.id}>
+                        {model.label}{model.tag ? ` - ${model.tag}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedModelTag && (
+                    <span
+                      className="hidden sm:inline-flex rounded-md px-2 py-1 text-[11px] font-semibold"
+                      style={{
+                        background: `${selectedModelTag.tagColor}18`,
+                        color: selectedModelTag.tagColor,
+                      }}
+                    >
+                      {selectedModelTag.tag}
+                    </span>
+                  )}
+                </div>
+              )}
+              <select
+                value={responseMode}
+                onChange={(e) => setResponseMode(e.target.value as ResponseMode)}
+                disabled={isStreaming}
+                className="h-8 rounded-lg border border-white/8 bg-black/30 px-2 text-xs text-zinc-300 outline-none transition-colors hover:border-white/15 focus:border-brand-500/40 disabled:opacity-50"
+                title="Choose answer length"
+              >
+                {RESPONSE_MODES.map((mode) => (
+                  <option key={mode.id} value={mode.id}>{mode.label}</option>
+                ))}
+              </select>
             </div>
 
             <div className="flex items-center gap-2">

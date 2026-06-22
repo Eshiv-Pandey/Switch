@@ -536,3 +536,43 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+@media (max-width: 768px) {
+  .app-shell {
+    height: 100dvh;
+  }
+
+  .app-main {
+    min-width: 0;
+  }
+
+  .chat-header-mobile {
+    align-items: flex-start;
+    gap: 12px;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .chat-controls-mobile {
+    width: 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  .chat-message-wrap {
+    max-width: 88%;
+  }
+
+  .composer-actions {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .composer-selects {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}

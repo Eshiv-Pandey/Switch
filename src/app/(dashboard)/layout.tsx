@@ -22,13 +22,13 @@ export default async function DashboardLayout({
   ]);
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: "#080808" }}>
+    <div className="app-shell flex h-screen overflow-hidden" style={{ background: "#080808" }}>
       <AppSidebar
         user={session.user}
         accounts={accounts}
         projects={userProjects}
       />
-      <main className="flex-1 overflow-hidden flex flex-col">
+      <main className="app-main flex-1 overflow-hidden flex flex-col">
         {children}
       </main>
     </div>

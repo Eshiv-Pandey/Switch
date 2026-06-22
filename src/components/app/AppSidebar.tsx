@@ -1,21 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Repeat2,
   LayoutDashboard,
-  MessageSquare,
   Settings,
   ChevronDown,
   ChevronRight,
   Plus,
   LogOut,
   Brain,
-  Zap,
 } from "lucide-react";
 
 interface SidebarUser {
@@ -65,7 +63,6 @@ export function AppSidebar({
   onAccountSelect,
 }: AppSidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
   const [expandedProviders, setExpandedProviders] = useState<Set<string>>(
     new Set(["gemini", "claude", "chatgpt"])
   );
@@ -73,6 +70,13 @@ export function AppSidebar({
     activeAccountId ?? accounts[0]?.id ?? ""
   );
   const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    const syncCollapsed = () => setCollapsed(window.innerWidth < 768);
+    syncCollapsed();
+    window.addEventListener("resize", syncCollapsed);
+    return () => window.removeEventListener("resize", syncCollapsed);
+  }, []);
 
   // Group accounts by provider
   const byProvider = accounts.reduce(
@@ -111,7 +115,7 @@ export function AppSidebar({
     height: "100%",
     background: "#0d0d0d",
     borderRight: "1px solid rgba(255,255,255,0.06)",
-    transition: "width 0.25s ease",
+    transition: "width 0.18s ease",
     overflow: "hidden",
   };
 
@@ -148,15 +152,15 @@ export function AppSidebar({
       >
         {!collapsed && (
           <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }}>
-            <div style={{ width: 28, height: 28, borderRadius: 8, background: "#c8f400", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <Repeat2 style={{ width: 14, height: 14, color: "#080808" }} />
+            <div style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(255,255,255,0.05)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}>
+              <Image src="/switch-icon.png" alt="" width={24} height={24} priority />
             </div>
             <span style={{ fontWeight: 700, color: "#fff", fontSize: "0.95rem", letterSpacing: "-0.01em" }}>Switch</span>
           </Link>
         )}
         {collapsed && (
-          <div style={{ width: 28, height: 28, borderRadius: 8, background: "#c8f400", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Repeat2 style={{ width: 14, height: 14, color: "#080808" }} />
+          <div style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(255,255,255,0.05)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+            <Image src="/switch-icon.png" alt="Switch" width={24} height={24} priority />
           </div>
         )}
         {!collapsed && (

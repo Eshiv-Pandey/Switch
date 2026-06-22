@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { signIn } from "next-auth/react";
 import { motion } from "framer-motion";
-import { Repeat2, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -34,7 +35,7 @@ export default function SignInPage() {
         router.push("/dashboard");
         router.refresh();
       }
-    } catch (err) {
+    } catch {
       setError("An unexpected error occurred.");
     } finally {
       setLoading(false);
@@ -55,8 +56,8 @@ export default function SignInPage() {
         {/* Logo */}
         <div className="flex justify-center mb-8">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-lg shadow-brand-600/30">
-              <Repeat2 className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shadow-lg overflow-hidden">
+              <Image src="/switch-icon.png" alt="" width={32} height={32} priority />
             </div>
             <span className="font-bold text-white text-xl tracking-tight">Switch</span>
           </Link>

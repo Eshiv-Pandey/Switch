@@ -3,19 +3,19 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, X, Loader2, FolderOpen } from "lucide-react";
+import { Plus, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const EMOJIS = ["📁", "🎯", "🔢", "💡", "📄", "🚀", "🔬", "🎓", "💼", "🏗️", "🌱", "⚡"];
 const COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ec4899", "#3b82f6", "#8b5cf6", "#06b6d4", "#f97316"];
 
 interface NewProjectModalProps {
-  userId: string;
+  userId?: string;
   label?: string;
   asCard?: boolean;
 }
 
-export function NewProjectModal({ userId, label = "New Project", asCard }: NewProjectModalProps) {
+export function NewProjectModal({ label = "New Project", asCard }: NewProjectModalProps) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -43,7 +43,6 @@ export function NewProjectModal({ userId, label = "New Project", asCard }: NewPr
         setName("");
         setDescription("");
         router.push(`/chat/${id}`);
-        router.refresh();
       } catch {
         setError("Failed to create project. Please try again.");
       }

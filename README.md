@@ -1,6 +1,12 @@
 # Switch — AI Model Switcher
 
-> Move between Claude, ChatGPT, Gemini, and DeepSeek without losing context.
+<div align="center">
+  <img src="./public/switch-logo.png" alt="Switch Logo" width="200" />
+</div>
+
+> **Switch** is a universal AI workspace that lets you move seamlessly between Claude, ChatGPT, Gemini, DeepSeek, and various OpenRouter models **without losing context**.
+> 
+> When you switch models mid-conversation, Switch automatically packages your chat history, files, and project memories, and injects them into the new model's context window. One workspace. Multiple AI brains.
 
 ## Quick Start
 
